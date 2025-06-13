@@ -1,14 +1,26 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useWallet } from '../../contexts/WalletContext';
-import { castVote, hasUserVoted, getVotingPower, isArbitrumNetwork } from '../../utils/governance';
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useWallet } from "../../contexts/WalletContext";
+import {
+  castVote,
+  hasUserVoted,
+  getVotingPower,
+  isSupportedNetwork,
+  getNetworkInfo,
+  getProposals,
+  ProposalInfo,
+  ProposalState,
+  getProposalStateText,
+  formatVoteCount,
+} from "../../utils/governance";
 
-interface Proposal {
+interface DisplayProposal {
   id: string;
   title: string;
-  status: 'ACTIVE' | 'EXECUTED' | 'EXECUTED ON L2' | 'DEFEATED' | 'CANCELED';
-  type: 'CONSTITUTIONAL' | 'NON-CONSTITUTIONAL' | 'REGULAR';
+  status: string;
+  type: "CONSTITUTIONAL" | "NON-CONSTITUTIONAL" | "REGULAR";
   date?: string;
   organization: string;
   votesFor: string;
@@ -24,105 +36,19 @@ interface VotingState {
   };
 }
 
-const proposals: Proposal[] = [
-  {
-    id: '1',
-    title: '[CANCELED] CONSTITUTIONAL Register the Sky Custom Gatewa...',
-    status: 'CANCELED',
-    type: 'CONSTITUTIONAL',
-    organization: 'Arbitrum Core',
-    votesFor: '246.84',
-    votesAgainst: '2.68M',
-    totalVotes: '2.68M',
-    addresses: 6
-  },
-  {
-    id: '2',
-    title: 'DeFi Renaissance Incentive Program (DRIP)',
-    status: 'ACTIVE',
-    type: 'REGULAR',
-    date: 'Jun 3rd, 2025',
-    organization: 'Arbitrum Treasury',
-    votesFor: '54.69M',
-    votesAgainst: '4.1M',
-    totalVotes: '58.81M',
-    addresses: 5120
-  },
-  {
-    id: '3',
-    title: '[CONSTITUTIONAL] AIP: ArbOS Version 40 Callisto',
-    status: 'EXECUTED ON L2',
-    type: 'CONSTITUTIONAL',
-    date: 'May 12th, 2025',
-    organization: 'Arbitrum Core',
-    votesFor: '223.72M',
-    votesAgainst: '9.15K',
-    totalVotes: '242.16M',
-    addresses: 3426
-  },
-  {
-    id: '4',
-    title: 'The Watchdog: Arbitrum DAO\'s Grant Misuse Bounty Program',
-    status: 'EXECUTED',
-    type: 'REGULAR',
-    date: 'May 6th, 2025',
-    organization: 'Arbitrum Treasury',
-    votesFor: '189.97M',
-    votesAgainst: '116.14K',
-    totalVotes: '211.22M',
-    addresses: 3777
-  },
-  {
-    id: '5',
-    title: '[NON-CONSTITUTIONAL] Arbitrum Audit Program',
-    status: 'EXECUTED',
-    type: 'NON-CONSTITUTIONAL',
-    date: 'Mar 17th, 2025',
-    organization: 'Arbitrum Treasury',
-    votesFor: '156.09M',
-    votesAgainst: '4.3M',
-    totalVotes: '197.49M',
-    addresses: 4309
-  },
-  {
-    id: '6',
-    title: '[NON-CONSTITUTIONAL] Arbitrum Onboarding V2: A Governanc...',
-    status: 'DEFEATED',
-    type: 'NON-CONSTITUTIONAL',
-    date: 'Mar 11th, 2025',
-    organization: 'Arbitrum Treasury',
-    votesFor: '26.71M',
-    votesAgainst: '123.29M',
-    totalVotes: '193.78M',
-    addresses: 5216
-  },
-  {
-    id: '7',
-    title: '[CONSTITUTIONAL] - Adopt Timeboost + Nova Fee Sweep',
-    status: 'EXECUTED',
-    type: 'CONSTITUTIONAL',
-    date: 'Mar 11th, 2025',
-    organization: 'Arbitrum Core',
-    votesFor: '213.04M',
-    votesAgainst: '44.7K',
-    totalVotes: '243.93M',
-    addresses: 5283
-  }
-];
-
 const getStatusBadge = (status: string) => {
   const baseClasses = "px-2 py-1 text-xs font-medium rounded-md";
-  
+
   switch (status) {
-    case 'ACTIVE':
+    case "ACTIVE":
       return `${baseClasses} bg-blue-100 text-blue-800`;
-    case 'EXECUTED':
+    case "EXECUTED":
       return `${baseClasses} bg-green-100 text-green-800`;
-    case 'EXECUTED ON L2':
+    case "EXECUTED ON L2":
       return `${baseClasses} bg-green-100 text-green-800`;
-    case 'DEFEATED':
+    case "DEFEATED":
       return `${baseClasses} bg-red-100 text-red-800`;
-    case 'CANCELED':
+    case "CANCELED":
       return `${baseClasses} bg-gray-100 text-gray-800`;
     default:
       return `${baseClasses} bg-gray-100 text-gray-800`;
@@ -131,116 +57,163 @@ const getStatusBadge = (status: string) => {
 
 export default function Proposals() {
   const { address, isConnected, chainId } = useWallet();
-  const [votingPower, setVotingPower] = useState<string>('0');
+  const [votingPower, setVotingPower] = useState<string>("0");
   const [votingState, setVotingState] = useState<VotingState>({});
-  const isCorrectNetwork = isArbitrumNetwork(chainId);
+  const [proposals, setProposals] = useState<DisplayProposal[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const isCorrectNetwork = isSupportedNetwork(chainId);
 
   useEffect(() => {
+    // Reset state when address changes
+    setVotingPower("0");
+    setVotingState({});
+    setProposals([]);
+    setLoading(true);
+
+    loadProposals();
+
     if (address && isConnected && isCorrectNetwork) {
+      console.log("Loading data for address:", address);
       loadVotingPower();
-      loadVotingStates();
     }
   }, [address, isConnected, isCorrectNetwork]);
+
+  // Load voting states after proposals are loaded
+  useEffect(() => {
+    if (address && isConnected && isCorrectNetwork && proposals.length > 0) {
+      loadVotingStates();
+    }
+  }, [address, isConnected, isCorrectNetwork, proposals]);
 
   const loadVotingPower = async () => {
     if (!address) return;
     try {
+      console.log("Loading voting power for:", address);
       const power = await getVotingPower(address);
+      console.log("Voting power loaded:", power);
       setVotingPower(power);
     } catch (error) {
-      console.error('Error loading voting power:', error);
+      console.error("Error loading voting power:", error);
+    }
+  };
+
+  const loadProposals = async () => {
+    try {
+      setLoading(true);
+      const contractProposals = await getProposals(0, 10);
+
+      const displayProposals: DisplayProposal[] = contractProposals.map(
+        (proposal, index) => ({
+          id: proposal.id,
+          title: `Proposal #${index + 1}`, // You can decode description from proposal details if needed
+          status: getProposalStateText(proposal.state),
+          type: "REGULAR" as const, // You can determine this from proposal details if needed
+          organization: "DAO",
+          votesFor: formatVoteCount(proposal.votes.forVotes),
+          votesAgainst: formatVoteCount(proposal.votes.againstVotes),
+          totalVotes: formatVoteCount(
+            proposal.votes.forVotes +
+              proposal.votes.againstVotes +
+              proposal.votes.abstainVotes,
+          ),
+          addresses: 0, // This would require additional contract calls to get voter count
+        }),
+      );
+
+      setProposals(displayProposals);
+    } catch (error) {
+      console.error("Error loading proposals:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadVotingStates = async () => {
-    if (!address) return;
+    if (!address || proposals.length === 0) return;
     const states: VotingState = {};
-    
+
     for (const proposal of proposals) {
       try {
         const hasVoted = await hasUserVoted(proposal.id, address);
         states[proposal.id] = {
           hasVoted,
-          isVoting: false
+          isVoting: false,
         };
       } catch (error) {
-        console.error(`Error checking vote status for proposal ${proposal.id}:`, error);
+        console.error(
+          `Error checking vote status for proposal ${proposal.id}:`,
+          error,
+        );
         states[proposal.id] = {
           hasVoted: false,
-          isVoting: false
+          isVoting: false,
         };
       }
     }
-    
+
     setVotingState(states);
   };
 
   const handleVote = async (proposalId: string, support: 0 | 1) => {
     if (!address || !isConnected || !isCorrectNetwork) return;
 
-    setVotingState(prev => ({
+    setVotingState((prev) => ({
       ...prev,
       [proposalId]: {
         ...prev[proposalId],
-        isVoting: true
-      }
+        isVoting: true,
+      },
     }));
 
     try {
       await castVote({ proposalId, support });
-      
+
       // Update local state
-      setVotingState(prev => ({
+      setVotingState((prev) => ({
         ...prev,
         [proposalId]: {
           hasVoted: true,
-          isVoting: false
-        }
+          isVoting: false,
+        },
       }));
-      
+
       // Show success message
-      alert(`Vote cast successfully! ${support === 1 ? 'For' : 'Against'}`);
+      alert(`Vote cast successfully! ${support === 1 ? "For" : "Against"}`);
     } catch (error) {
-      console.error('Error casting vote:', error);
-      alert('Failed to cast vote. Please try again.');
-      
-      setVotingState(prev => ({
+      console.error("Error casting vote:", error);
+      alert("Failed to cast vote. Please try again.");
+
+      setVotingState((prev) => ({
         ...prev,
         [proposalId]: {
           ...prev[proposalId],
-          isVoting: false
-        }
+          isVoting: false,
+        },
       }));
     }
   };
 
-  const renderVotingButtons = (proposal: Proposal) => {
+  const renderVotingButtons = (proposal: DisplayProposal) => {
     if (!isConnected || !address) {
       return (
-        <div className="text-xs text-gray-500 mt-2">
-          Connect wallet to vote
-        </div>
+        <div className="text-xs text-gray-500 mt-2">Connect wallet to vote</div>
       );
     }
 
     if (!isCorrectNetwork) {
       return (
         <div className="text-xs text-red-500 mt-2">
-          Switch to Arbitrum network to vote
+          Switch to a supported network to vote
         </div>
       );
     }
 
-    if (proposal.status !== 'ACTIVE') {
-      return (
-        <div className="text-xs text-gray-500 mt-2">
-          Voting ended
-        </div>
-      );
+    if (proposal.status !== "ACTIVE") {
+      return <div className="text-xs text-gray-500 mt-2">Voting ended</div>;
     }
 
     const state = votingState[proposal.id];
-    
+
     if (state?.hasVoted) {
       return (
         <div className="text-xs text-green-600 mt-2 font-medium">
@@ -250,11 +223,7 @@ export default function Proposals() {
     }
 
     if (state?.isVoting) {
-      return (
-        <div className="text-xs text-blue-600 mt-2">
-          Casting vote...
-        </div>
-      );
+      return <div className="text-xs text-blue-600 mt-2">Casting vote...</div>;
     }
 
     return (
@@ -278,7 +247,10 @@ export default function Proposals() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div
+      key={address || "no-address"}
+      className="bg-white rounded-lg shadow-sm border border-gray-200"
+    >
       <div className="border-b border-gray-200">
         <div className="px-6 py-6">
           <div className="flex items-center justify-between">
@@ -286,93 +258,134 @@ export default function Proposals() {
               <button className="text-blue-600 font-semibold border-b-2 border-blue-600 pb-2">
                 Onchain
               </button>
-              {isConnected && votingPower !== '0' && (
-                <div className="text-sm text-gray-600">
-                  Voting Power: <span className="font-semibold text-blue-600">{parseFloat(votingPower).toFixed(2)} ARB</span>
+              {isConnected && (
+                <div className="flex items-center space-x-6">
+                  <div className="text-sm text-gray-600">
+                    Network:{" "}
+                    <span className="font-semibold text-green-600">
+                      {getNetworkInfo(chainId).name}
+                    </span>
+                  </div>
+                  {votingPower !== "0" && (
+                    <div className="text-sm text-gray-600">
+                      Voting Power:{" "}
+                      <span className="font-semibold text-blue-600">
+                        {parseFloat(votingPower).toFixed(2)}{" "}
+                        {getNetworkInfo(chainId).symbol}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
             {isConnected && (
-              <button className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center">
+              <Link
+                href="/proposals/new"
+                className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center"
+              >
                 <span className="mr-2">+</span>
                 New proposal
-              </button>
+              </Link>
             )}
           </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Proposal
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Votes for
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Votes against
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Total votes
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {proposals.map((proposal) => (
-              <tr key={proposal.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-6 w-1/2">
-                  <div className="max-w-md">
-                    <div className="text-sm font-medium text-gray-900 mb-2 leading-tight">
-                      {proposal.title}
-                    </div>
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className={getStatusBadge(proposal.status)}>
-                        {proposal.status}
-                      </span>
-                      {proposal.date && (
-                        <span className="text-xs text-gray-500">
-                          {proposal.date}
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="text-gray-500">Loading proposals...</div>
+        </div>
+      ) : proposals.length === 0 ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="text-center">
+            <div className="text-gray-500 mb-2">No proposals found</div>
+            <div className="text-sm text-gray-400">
+              Create the first proposal to get started
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Proposal
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Votes for
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Votes against
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Total votes
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {proposals.map((proposal) => (
+                <tr
+                  key={proposal.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <td className="px-6 py-6 w-1/2">
+                    <div className="max-w-md">
+                      <div className="text-sm font-medium text-gray-900 mb-2 leading-tight">
+                        {proposal.title}
+                      </div>
+                      <div className="flex items-center space-x-3 mb-2">
+                        <span className={getStatusBadge(proposal.status)}>
+                          {proposal.status}
                         </span>
-                      )}
+                        {proposal.date && (
+                          <span className="text-xs text-gray-500">
+                            {proposal.date}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {proposal.organization}
+                      </div>
+                      {renderVotingButtons(proposal)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-6 w-1/6">
+                    <div className="text-sm font-semibold text-green-600 mb-1">
+                      {proposal.votesFor}
+                    </div>
+                    <div className="w-16 h-1 bg-gray-200 rounded-full">
+                      <div
+                        className="h-1 bg-green-500 rounded-full"
+                        style={{ width: "75%" }}
+                      ></div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6 w-1/6">
+                    <div className="text-sm font-semibold text-red-600 mb-1">
+                      {proposal.votesAgainst}
+                    </div>
+                    <div className="w-16 h-1 bg-gray-200 rounded-full">
+                      <div
+                        className="h-1 bg-red-500 rounded-full"
+                        style={{ width: "25%" }}
+                      ></div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6 w-1/6 text-right">
+                    <div className="text-sm font-semibold text-gray-900">
+                      {proposal.totalVotes}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {proposal.organization}
+                      {proposal.addresses} addresses
                     </div>
-                    {renderVotingButtons(proposal)}
-                  </div>
-                </td>
-                <td className="px-6 py-6 w-1/6">
-                  <div className="text-sm font-semibold text-green-600 mb-1">
-                    {proposal.votesFor}
-                  </div>
-                  <div className="w-16 h-1 bg-gray-200 rounded-full">
-                    <div className="h-1 bg-green-500 rounded-full" style={{ width: '75%' }}></div>
-                  </div>
-                </td>
-                <td className="px-6 py-6 w-1/6">
-                  <div className="text-sm font-semibold text-red-600 mb-1">
-                    {proposal.votesAgainst}
-                  </div>
-                  <div className="w-16 h-1 bg-gray-200 rounded-full">
-                    <div className="h-1 bg-red-500 rounded-full" style={{ width: '25%' }}></div>
-                  </div>
-                </td>
-                <td className="px-6 py-6 w-1/6 text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {proposal.totalVotes}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {proposal.addresses} addresses
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
