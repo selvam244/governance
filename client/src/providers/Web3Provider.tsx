@@ -35,7 +35,7 @@ const hardhatLocal = defineChain({
 });
 
 export const config = getDefaultConfig({
-  appName: "Arbitrum Governance",
+  appName: "OpenLedger Governance",
   projectId: "YOUR_PROJECT_ID", // Get this from WalletConnect Cloud
   chains: [
     arbitrum,

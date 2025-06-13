@@ -34,6 +34,7 @@ export interface VoteParams {
 }
 
 export interface ProposalDetails {
+  proposalId: string;
   targets: string[];
   values: bigint[];
   calldatas: string[];
@@ -107,13 +108,14 @@ export async function getProposalDetails(
       abi: GOVERNOR_ABI,
       functionName: "proposalDetailsAt",
       args: [BigInt(index)],
-    })) as [string[], bigint[], string[], string];
-    alert(result[0]);
+    })) as [bigint, string[], bigint[], string[], string];
+
     return {
-      targets: result[0],
-      values: result[1],
-      calldatas: result[2],
-      descriptionHash: result[3],
+      proposalId: result[0].toString(),
+      targets: result[1],
+      values: result[2],
+      calldatas: result[3],
+      descriptionHash: result[4],
     };
   } catch (error) {
     console.error("Error getting proposal details:", error);
@@ -129,15 +131,23 @@ export async function getProposalId(
   descriptionHash: string,
 ): Promise<string | null> {
   try {
-    const result = await readContract(config, {
+    console.log("Getting proposal ID with args:", {
+      targets,
+      values,
+      calldatas,
+      descriptionHash,
+    });
+    const result = (await readContract(config, {
       address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
       abi: GOVERNOR_ABI,
       functionName: "getProposalId",
       args: [targets, values, calldatas, descriptionHash],
-    });
+    })) as bigint;
+    console.log("Proposal ID result:", result);
     return result.toString();
   } catch (error) {
     console.error("Error getting proposal ID:", error);
+    console.error("Error details:", error);
     return null;
   }
 }
@@ -248,17 +258,7 @@ export async function getProposals(
         continue;
       }
 
-      const proposalId = await getProposalId(
-        details.targets,
-        details.values,
-        details.calldatas,
-        details.descriptionHash,
-      );
-      if (!proposalId) {
-        console.log(`No proposal ID found for proposal at index ${i}`);
-        continue;
-      }
-
+      const proposalId = details.proposalId;
       console.log(`Loading votes and state for proposal ID ${proposalId}`);
       const [votes, state] = await Promise.all([
         getProposalVotes(proposalId),
