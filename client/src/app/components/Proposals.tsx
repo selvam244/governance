@@ -128,6 +128,19 @@ export default function Proposals() {
     }
   };
 
+  // Function to refresh proposals - can be called from other components
+  const refreshProposals = () => {
+    loadProposals();
+  };
+
+  // Export refresh function globally for use by other components
+  React.useEffect(() => {
+    (window as any).refreshProposals = refreshProposals;
+    return () => {
+      delete (window as any).refreshProposals;
+    };
+  }, []);
+
   const loadVotingStates = async () => {
     if (!address || proposals.length === 0) return;
     const states: VotingState = {};

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "../../../contexts/WalletContext";
-import { getNetworkInfo } from "../../../utils/governance";
+import { getNetworkInfo, createProposal } from "../../../utils/governance";
 
 export default function NewProposalPage() {
   const [title, setTitle] = useState("");
@@ -27,13 +27,37 @@ export default function NewProposalPage() {
     setIsSubmitting(true);
 
     try {
-      // TODO: Implement actual proposal submission logic
-      console.log("Submitting proposal:", { title, description, address });
+      // Combine title and description into a single string
+      const combinedDescription = `${title}\n\n${description}`;
 
-      // Simulate submission
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Prepare proposal arguments
+      const targets = [address];
+      const values = ["0"];
+      const calldatas = ["0x"];
 
-      alert("Proposal submitted successfully!");
+      console.log("Submitting proposal with args:", {
+        targets,
+        values,
+        calldatas,
+        description: combinedDescription,
+      });
+
+      // Call the actual propose method
+      const result = await createProposal(
+        targets,
+        values,
+        calldatas,
+        combinedDescription,
+      );
+
+      console.log("Proposal created with transaction hash:", result.hash);
+      alert(`Proposal submitted successfully! Transaction: ${result.hash}`);
+
+      // Refresh the proposals list
+      if ((window as any).refreshProposals) {
+        (window as any).refreshProposals();
+      }
+
       router.push("/proposals");
     } catch (error) {
       console.error("Error submitting proposal:", error);
