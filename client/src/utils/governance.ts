@@ -303,6 +303,40 @@ export async function castVote({ proposalId, support }: VoteParams) {
   }
 }
 
+// Queue a succeeded proposal
+export async function queueProposal(proposalId: string) {
+  try {
+    const result = await writeContract(config, {
+      address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
+      abi: GOVERNOR_ABI,
+      functionName: "queue",
+      args: [BigInt(proposalId)],
+    });
+
+    return { hash: result };
+  } catch (error) {
+    console.error("Error queueing proposal:", error);
+    throw error;
+  }
+}
+
+// Execute a queued proposal
+export async function executeProposal(proposalId: string) {
+  try {
+    const result = await writeContract(config, {
+      address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
+      abi: GOVERNOR_ABI,
+      functionName: "execute",
+      args: [BigInt(proposalId)],
+    });
+
+    return { hash: result };
+  } catch (error) {
+    console.error("Error executing proposal:", error);
+    throw error;
+  }
+}
+
 // Create a new proposal
 export async function createProposal(
   targets: string[],

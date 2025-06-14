@@ -14,6 +14,8 @@ import {
   ProposalState,
   getProposalStateText,
   formatVoteCount,
+  queueProposal,
+  executeProposal,
 } from "../../utils/governance";
 
 interface DisplayProposal {
@@ -33,6 +35,18 @@ interface VotingState {
   [proposalId: string]: {
     hasVoted: boolean;
     isVoting: boolean;
+  };
+}
+
+interface QueueState {
+  [proposalId: string]: {
+    isQueueing: boolean;
+  };
+}
+
+interface ExecuteState {
+  [proposalId: string]: {
+    isExecuting: boolean;
   };
 }
 
@@ -59,6 +73,8 @@ export default function Proposals() {
   const { address, isConnected, chainId } = useWallet();
   const [votingPower, setVotingPower] = useState<string>("0");
   const [votingState, setVotingState] = useState<VotingState>({});
+  const [queueState, setQueueState] = useState<QueueState>({});
+  const [executeState, setExecuteState] = useState<ExecuteState>({});
   const [proposals, setProposals] = useState<DisplayProposal[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const isCorrectNetwork = isSupportedNetwork(chainId);
@@ -67,6 +83,8 @@ export default function Proposals() {
     // Reset state when address changes
     setVotingPower("0");
     setVotingState({});
+    setQueueState({});
+    setExecuteState({});
     setProposals([]);
     setLoading(true);
 
@@ -206,6 +224,66 @@ export default function Proposals() {
     }
   };
 
+  const handleQueue = async (proposalId: string) => {
+    if (!address || !isConnected || !isCorrectNetwork) return;
+
+    setQueueState((prev) => ({
+      ...prev,
+      [proposalId]: {
+        isQueueing: true,
+      },
+    }));
+
+    try {
+      const result = await queueProposal(proposalId);
+
+      alert(`Proposal queued successfully! Transaction: ${result.hash}`);
+
+      // Refresh proposals to show updated state
+      loadProposals();
+    } catch (error) {
+      console.error("Error queueing proposal:", error);
+      alert("Failed to queue proposal. Please try again.");
+    } finally {
+      setQueueState((prev) => ({
+        ...prev,
+        [proposalId]: {
+          isQueueing: false,
+        },
+      }));
+    }
+  };
+
+  const handleExecute = async (proposalId: string) => {
+    if (!address || !isConnected || !isCorrectNetwork) return;
+
+    setExecuteState((prev) => ({
+      ...prev,
+      [proposalId]: {
+        isExecuting: true,
+      },
+    }));
+
+    try {
+      const result = await executeProposal(proposalId);
+
+      alert(`Proposal executed successfully! Transaction: ${result.hash}`);
+
+      // Refresh proposals to show updated state
+      loadProposals();
+    } catch (error) {
+      console.error("Error executing proposal:", error);
+      alert("Failed to execute proposal. Please try again.");
+    } finally {
+      setExecuteState((prev) => ({
+        ...prev,
+        [proposalId]: {
+          isExecuting: false,
+        },
+      }));
+    }
+  };
+
   const renderVotingButtons = (proposal: DisplayProposal) => {
     if (!isConnected || !address) {
       return (
@@ -256,6 +334,72 @@ export default function Proposals() {
           Vote Against
         </button>
       </div>
+    );
+  };
+
+  const renderQueueButton = (proposal: DisplayProposal) => {
+    if (!isConnected || !address) {
+      return null;
+    }
+
+    if (!isCorrectNetwork) {
+      return null;
+    }
+
+    if (proposal.status !== "SUCCEEDED") {
+      return null;
+    }
+
+    const state = queueState[proposal.id];
+
+    if (state?.isQueueing) {
+      return (
+        <div className="text-xs text-blue-600 mt-2">Queueing proposal...</div>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => handleQueue(proposal.id)}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors mt-2"
+        disabled={state?.isQueueing}
+      >
+        Queue
+      </button>
+    );
+  };
+
+  const renderExecuteButton = (proposal: DisplayProposal) => {
+    if (!isConnected || !address) {
+      return null;
+    }
+
+    if (!isCorrectNetwork) {
+      return null;
+    }
+
+    if (proposal.status !== "QUEUED") {
+      return null;
+    }
+
+    const state = executeState[proposal.id];
+
+    if (state?.isExecuting) {
+      return (
+        <div className="text-xs text-purple-600 mt-2">
+          Executing proposal...
+        </div>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => handleExecute(proposal.id)}
+        className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors mt-2"
+        disabled={state?.isExecuting}
+      >
+        Execute
+      </button>
     );
   };
 
@@ -361,6 +505,8 @@ export default function Proposals() {
                         {proposal.organization}
                       </div>
                       {renderVotingButtons(proposal)}
+                      {renderQueueButton(proposal)}
+                      {renderExecuteButton(proposal)}
                     </div>
                   </td>
                   <td className="px-6 py-6 w-1/6">
