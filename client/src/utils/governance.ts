@@ -193,6 +193,22 @@ export async function getProposalState(
   }
 }
 
+// Get token balance for an address
+export async function getTokenBalance(address: string): Promise<string> {
+  try {
+    const result = await readContract(config, {
+      address: VOTE_TOKEN_CONTRACT_ADDRESS as `0x${string}`,
+      abi: TOKEN_ABI,
+      functionName: "balanceOf",
+      args: [address as `0x${string}`],
+    });
+    return formatEther(result as bigint);
+  } catch (error) {
+    console.error("Error getting token balance:", error);
+    return "0";
+  }
+}
+
 // Get voting power for an address
 export async function getVotingPower(
   address: string,
@@ -211,6 +227,54 @@ export async function getVotingPower(
   } catch (error) {
     console.error("Error getting voting power:", error);
     return "0";
+  }
+}
+
+// Delegate voting power to self or another address
+export async function delegateVotes(delegatee: string) {
+  try {
+    const result = await writeContract(config, {
+      address: VOTE_TOKEN_CONTRACT_ADDRESS as `0x${string}`,
+      abi: TOKEN_ABI,
+      functionName: "delegate",
+      args: [delegatee as `0x${string}`],
+    });
+
+    return { hash: result };
+  } catch (error) {
+    console.error("Error delegating votes:", error);
+    throw error;
+  }
+}
+
+// Get current delegate for an address
+export async function getCurrentDelegate(address: string): Promise<string> {
+  try {
+    const result = await readContract(config, {
+      address: VOTE_TOKEN_CONTRACT_ADDRESS as `0x${string}`,
+      abi: TOKEN_ABI,
+      functionName: "delegates",
+      args: [address as `0x${string}`],
+    });
+    return result as string;
+  } catch (error) {
+    console.error("Error getting current delegate:", error);
+    return "0x0000000000000000000000000000000000000000";
+  }
+}
+
+// Get token symbol
+export async function getTokenSymbol(): Promise<string> {
+  try {
+    const result = await readContract(config, {
+      address: VOTE_TOKEN_CONTRACT_ADDRESS as `0x${string}`,
+      abi: TOKEN_ABI,
+      functionName: "symbol",
+    });
+    return result as string;
+  } catch (error) {
+    console.error("Error getting token symbol:", error);
+    return "TOKEN";
   }
 }
 

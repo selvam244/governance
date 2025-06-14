@@ -16,6 +16,10 @@ import {
   formatVoteCount,
   queueProposal,
   executeProposal,
+  getTokenBalance,
+  getCurrentDelegate,
+  delegateVotes,
+  getTokenSymbol,
 } from "../../utils/governance";
 
 interface DisplayProposal {
@@ -72,6 +76,10 @@ const getStatusBadge = (status: string) => {
 export default function Proposals() {
   const { address, isConnected, chainId } = useWallet();
   const [votingPower, setVotingPower] = useState<string>("0");
+  const [tokenBalance, setTokenBalance] = useState<string>("0");
+  const [currentDelegate, setCurrentDelegate] = useState<string>("");
+  const [tokenSymbol, setTokenSymbol] = useState<string>("TOKEN");
+  const [isDelegating, setIsDelegating] = useState<boolean>(false);
   const [votingState, setVotingState] = useState<VotingState>({});
   const [queueState, setQueueState] = useState<QueueState>({});
   const [executeState, setExecuteState] = useState<ExecuteState>({});
@@ -82,6 +90,8 @@ export default function Proposals() {
   useEffect(() => {
     // Reset state when address changes
     setVotingPower("0");
+    setTokenBalance("0");
+    setCurrentDelegate("");
     setVotingState({});
     setQueueState({});
     setExecuteState({});
@@ -89,10 +99,13 @@ export default function Proposals() {
     setLoading(true);
 
     loadProposals();
+    loadTokenSymbol();
 
     if (address && isConnected && isCorrectNetwork) {
       console.log("Loading data for address:", address);
       loadVotingPower();
+      loadTokenBalance();
+      loadCurrentDelegate();
     }
   }, [address, isConnected, isCorrectNetwork]);
 
@@ -112,6 +125,54 @@ export default function Proposals() {
       setVotingPower(power);
     } catch (error) {
       console.error("Error loading voting power:", error);
+    }
+  };
+
+  const loadTokenBalance = async () => {
+    if (!address) return;
+    try {
+      const balance = await getTokenBalance(address);
+      setTokenBalance(balance);
+    } catch (error) {
+      console.error("Error loading token balance:", error);
+    }
+  };
+
+  const loadCurrentDelegate = async () => {
+    if (!address) return;
+    try {
+      const delegate = await getCurrentDelegate(address);
+      setCurrentDelegate(delegate);
+    } catch (error) {
+      console.error("Error loading current delegate:", error);
+    }
+  };
+
+  const loadTokenSymbol = async () => {
+    try {
+      const symbol = await getTokenSymbol();
+      setTokenSymbol(symbol);
+    } catch (error) {
+      console.error("Error loading token symbol:", error);
+    }
+  };
+
+  const handleDelegateToSelf = async () => {
+    if (!address || !isConnected || !isCorrectNetwork) return;
+
+    setIsDelegating(true);
+    try {
+      const result = await delegateVotes(address);
+      alert(`Delegation successful! Transaction: ${result.hash}`);
+
+      // Reload voting power and delegate info
+      await loadVotingPower();
+      await loadCurrentDelegate();
+    } catch (error) {
+      console.error("Error delegating votes:", error);
+      alert("Failed to delegate votes. Please try again.");
+    } finally {
+      setIsDelegating(false);
     }
   };
 
@@ -423,15 +484,28 @@ export default function Proposals() {
                       {getNetworkInfo(chainId).name}
                     </span>
                   </div>
-                  {votingPower !== "0" && (
-                    <div className="text-sm text-gray-600">
-                      Voting Power:{" "}
-                      <span className="font-semibold text-blue-600">
-                        {parseFloat(votingPower).toFixed(2)}{" "}
-                        {getNetworkInfo(chainId).symbol}
-                      </span>
-                    </div>
-                  )}
+                  <div className="text-sm text-gray-600">
+                    Token Balance:{" "}
+                    <span className="font-semibold text-gray-800">
+                      {parseFloat(tokenBalance).toFixed(2)} {tokenSymbol}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Voting Power:{" "}
+                    <span className="font-semibold text-blue-600">
+                      {parseFloat(votingPower).toFixed(2)} {tokenSymbol}
+                    </span>
+                  </div>
+                  {parseFloat(votingPower) === 0 &&
+                    parseFloat(tokenBalance) > 0 && (
+                      <button
+                        onClick={handleDelegateToSelf}
+                        disabled={isDelegating}
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                      >
+                        {isDelegating ? "Delegating..." : "Activate Voting"}
+                      </button>
+                    )}
                 </div>
               )}
             </div>
