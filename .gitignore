@@ -22,6 +22,8 @@ docker-compose/services/redis-data/
 
 server/logs/
 server/node_modules/
+server/database.sqlite
+
 # testing
 /coverage
 
