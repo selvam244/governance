@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useWallet } from "../../contexts/WalletContext";
 import {
   castVote,
@@ -75,6 +76,7 @@ const getStatusBadge = (status: string) => {
 
 export default function Proposals() {
   const { address, isConnected, chainId } = useWallet();
+  const router = useRouter();
   const [votingPower, setVotingPower] = useState<string>("0");
   const [tokenBalance, setTokenBalance] = useState<string>("0");
   const [currentDelegate, setCurrentDelegate] = useState<string>("");
@@ -381,14 +383,20 @@ export default function Proposals() {
     return (
       <div className="flex space-x-2 mt-2">
         <button
-          onClick={() => handleVote(proposal.id, 1)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVote(proposal.id, 1);
+          }}
           className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
           disabled={state?.isVoting}
         >
           Vote For
         </button>
         <button
-          onClick={() => handleVote(proposal.id, 0)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVote(proposal.id, 0);
+          }}
           className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
           disabled={state?.isVoting}
         >
@@ -421,7 +429,10 @@ export default function Proposals() {
 
     return (
       <button
-        onClick={() => handleQueue(proposal.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleQueue(proposal.id);
+        }}
         className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors mt-2"
         disabled={state?.isQueueing}
       >
@@ -455,7 +466,10 @@ export default function Proposals() {
 
     return (
       <button
-        onClick={() => handleExecute(proposal.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleExecute(proposal.id);
+        }}
         className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors mt-2"
         disabled={state?.isExecuting}
       >
@@ -499,7 +513,10 @@ export default function Proposals() {
                   {parseFloat(votingPower) === 0 &&
                     parseFloat(tokenBalance) > 0 && (
                       <button
-                        onClick={handleDelegateToSelf}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelegateToSelf();
+                        }}
                         disabled={isDelegating}
                         className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
                       >
@@ -558,7 +575,8 @@ export default function Proposals() {
               {proposals.map((proposal) => (
                 <tr
                   key={proposal.id}
-                  className="hover:bg-gray-50 transition-colors"
+                  className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/proposals/${proposal.id}`)}
                 >
                   <td className="px-6 py-6 w-1/2">
                     <div className="max-w-md">

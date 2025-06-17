@@ -193,6 +193,147 @@ export async function getProposalState(
   }
 }
 
+// Get proposal proposer by proposal ID
+export async function getProposalProposer(
+  proposalId: string,
+): Promise<string | null> {
+  try {
+    const result = await readContract(config, {
+      address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
+      abi: GOVERNOR_ABI,
+      functionName: "proposalProposer",
+      args: [BigInt(proposalId)],
+    });
+    return result as string;
+  } catch (error) {
+    console.error("Error getting proposal proposer:", error);
+    return null;
+  }
+}
+
+// Get proposal snapshot (vote start block) by proposal ID
+export async function getProposalSnapshot(
+  proposalId: string,
+): Promise<bigint | null> {
+  try {
+    const result = await readContract(config, {
+      address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
+      abi: GOVERNOR_ABI,
+      functionName: "proposalSnapshot",
+      args: [BigInt(proposalId)],
+    });
+    return result as bigint;
+  } catch (error) {
+    console.error("Error getting proposal snapshot:", error);
+    return null;
+  }
+}
+
+// Get proposal deadline (vote end block) by proposal ID
+export async function getProposalDeadline(
+  proposalId: string,
+): Promise<bigint | null> {
+  try {
+    const result = await readContract(config, {
+      address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
+      abi: GOVERNOR_ABI,
+      functionName: "proposalDeadline",
+      args: [BigInt(proposalId)],
+    });
+    return result as bigint;
+  } catch (error) {
+    console.error("Error getting proposal deadline:", error);
+    return null;
+  }
+}
+
+// Get quorum required at a specific timepoint
+export async function getQuorum(timepoint: bigint): Promise<bigint | null> {
+  try {
+    const result = await readContract(config, {
+      address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
+      abi: GOVERNOR_ABI,
+      functionName: "quorum",
+      args: [timepoint],
+    });
+    return result as bigint;
+  } catch (error) {
+    console.error("Error getting quorum:", error);
+    return null;
+  }
+}
+
+// Get proposal threshold
+export async function getProposalThreshold(): Promise<bigint | null> {
+  try {
+    const result = await readContract(config, {
+      address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
+      abi: GOVERNOR_ABI,
+      functionName: "proposalThreshold",
+    });
+    return result as bigint;
+  } catch (error) {
+    console.error("Error getting proposal threshold:", error);
+    return null;
+  }
+}
+
+// Get voting delay
+export async function getVotingDelay(): Promise<bigint | null> {
+  try {
+    const result = await readContract(config, {
+      address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
+      abi: GOVERNOR_ABI,
+      functionName: "votingDelay",
+    });
+    return result as bigint;
+  } catch (error) {
+    console.error("Error getting voting delay:", error);
+    return null;
+  }
+}
+
+// Get voting period
+export async function getVotingPeriod(): Promise<bigint | null> {
+  try {
+    const result = await readContract(config, {
+      address: GOVERNOR_CONTRACT_ADDRESS as `0x${string}`,
+      abi: GOVERNOR_ABI,
+      functionName: "votingPeriod",
+    });
+    return result as bigint;
+  } catch (error) {
+    console.error("Error getting voting period:", error);
+    return null;
+  }
+}
+
+// Helper function to estimate date from block number (rough approximation)
+export function estimateDateFromBlock(blockNumber: bigint): Date {
+  // Assuming ~12 second block time for Ethereum/Hardhat
+  // This is a rough estimate - in production you'd want to use a proper block timestamp API
+  const currentBlock = Date.now() / 1000; // Current timestamp
+  const estimatedBlockTime = 12; // seconds per block
+  const currentBlockNumber = Math.floor(currentBlock / estimatedBlockTime);
+
+  const blockDifference = Number(blockNumber) - currentBlockNumber;
+  const timeDifference = blockDifference * estimatedBlockTime * 1000; // Convert to milliseconds
+
+  return new Date(Date.now() + timeDifference);
+}
+
+// Format date for display
+export function formatProposalDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 // Get token balance for an address
 export async function getTokenBalance(address: string): Promise<string> {
   try {

@@ -1,20 +1,20 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import Header from './components/Header'
-import Web3Provider from '../providers/Web3Provider'
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import Header from "./components/Header";
+import Web3Provider from "../providers/Web3Provider";
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Arbitrum Governance',
-  description: 'Arbitrum governance dashboard',
-}
+  title: "OpenLedger Governance",
+  description: "OpenLedger governance dashboard",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
@@ -22,12 +22,10 @@ export default function RootLayout({
         <Web3Provider>
           <div className="min-h-screen bg-gray-50">
             <Header />
-            <div className="bg-gray-50">
-              {children}
-            </div>
+            <div className="bg-gray-50">{children}</div>
           </div>
         </Web3Provider>
       </body>
     </html>
-  )
+  );
 }

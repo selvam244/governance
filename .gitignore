@@ -13,6 +13,13 @@ node_modules/
 !.yarn/versions
 blockchain/cache/
 blockchain/artifacts/
+blockchain/ignition/deployments/
+
+docker-compose/services/blockscout-db-data/
+docker-compose/services/stats-db-data/
+docker-compose/services/logs/
+docker-compose/services/redis-data/
+
 # testing
 /coverage
 
