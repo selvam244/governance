@@ -20,6 +20,8 @@ docker-compose/services/stats-db-data/
 docker-compose/services/logs/
 docker-compose/services/redis-data/
 
+server/logs/
+server/node_modules/
 # testing
 /coverage
 
