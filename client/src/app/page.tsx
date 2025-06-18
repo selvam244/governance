@@ -26,7 +26,7 @@ interface GovernanceStats {
 }
 
 export default function Home() {
-  const { address, isConnected, chainId } = useWallet();
+  const { address, isConnected, chainId, isAuthenticated } = useWallet();
   const [stats, setStats] = useState<GovernanceStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedAddress, setCopiedAddress] = useState<string>("");
@@ -182,21 +182,38 @@ export default function Home() {
             </div>
           </Link>
 
-          <Link
-            href="/proposals/new"
-            className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-          >
-            <div className="text-4xl mb-4">✏️</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Create Proposal
-            </h3>
-            <p className="text-gray-600">
-              Submit new proposals for community voting
-            </p>
-            <div className="mt-4 text-green-600 group-hover:text-green-700 font-medium">
-              Start creating →
+          {isConnected && isAuthenticated ? (
+            <Link
+              href="/proposals/new"
+              className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+            >
+              <div className="text-4xl mb-4">✏️</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Create Proposal
+              </h3>
+              <p className="text-gray-600">
+                Submit new proposals for community voting
+              </p>
+              <div className="mt-4 text-green-600 group-hover:text-green-700 font-medium">
+                Start creating →
+              </div>
+            </Link>
+          ) : (
+            <div className="group bg-white rounded-2xl p-8 shadow-lg border-2 border-gray-200 opacity-60">
+              <div className="text-4xl mb-4">✏️</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Create Proposal
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Submit new proposals for community voting
+              </p>
+              <div className="text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+                {!isConnected
+                  ? "Connect wallet & sign in required"
+                  : "Sign in required"}
+              </div>
             </div>
-          </Link>
+          )}
 
           <div className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="text-4xl mb-4">📚</div>
@@ -339,7 +356,7 @@ export default function Home() {
             >
               Browse Proposals
             </Link>
-            {isConnected && (
+            {isConnected && isAuthenticated && (
               <Link
                 href="/proposals/new"
                 className="bg-blue-500 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-400 transition-colors border border-blue-400"

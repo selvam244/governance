@@ -1,4 +1,4 @@
-import { parseEther, formatEther } from "viem";
+import { parseEther, formatEther, keccak256, toBytes } from "viem";
 import { readContract, writeContract } from "wagmi/actions";
 import { config } from "../providers/Web3Provider";
 import MyGovernorABI from "../contracts/MyGovernor.json";
@@ -151,6 +151,39 @@ export async function getProposalId(
   } catch (error) {
     console.error("Error getting proposal ID:", error);
     console.error("Error details:", error);
+    return null;
+  }
+}
+
+// Calculate description hash and get onchain proposal ID
+export async function calculateOnchainProposalId(
+  targets: string[],
+  values: string[],
+  calldatas: string[],
+  description: string,
+): Promise<string | null> {
+  try {
+    console.log("🔢 Calculating onchain proposal ID...");
+
+    // Calculate description hash
+    const descriptionHash = keccak256(toBytes(description));
+    console.log("📝 Description hash:", descriptionHash);
+
+    // Convert values to bigint array
+    const valueBigInts = values.map((v) => BigInt(v));
+
+    // Get proposal ID from contract
+    const proposalId = await getProposalId(
+      targets,
+      valueBigInts,
+      calldatas,
+      descriptionHash,
+    );
+
+    console.log("🆔 Calculated onchain proposal ID:", proposalId);
+    return proposalId;
+  } catch (error) {
+    console.error("❌ Error calculating onchain proposal ID:", error);
     return null;
   }
 }

@@ -75,7 +75,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function Proposals() {
-  const { address, isConnected, chainId } = useWallet();
+  const { address, isConnected, chainId, isAuthenticated } = useWallet();
   const router = useRouter();
   const [votingPower, setVotingPower] = useState<string>("0");
   const [tokenBalance, setTokenBalance] = useState<string>("0");
@@ -526,7 +526,7 @@ export default function Proposals() {
                 </div>
               )}
             </div>
-            {isConnected && (
+            {isConnected && isAuthenticated ? (
               <Link
                 href="/proposals/new"
                 className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center"
@@ -534,7 +534,12 @@ export default function Proposals() {
                 <span className="mr-2">+</span>
                 New proposal
               </Link>
-            )}
+            ) : isConnected ? (
+              <div className="bg-gray-400 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center opacity-60 cursor-not-allowed">
+                <span className="mr-2">+</span>
+                New proposal (Sign in required)
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
